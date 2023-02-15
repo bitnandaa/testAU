@@ -1,0 +1,786 @@
+﻿var commonCtrl = function(){
+
+    "use strict";
+    
+    // create object function
+    var checkbox = {
+        allClass : ".checkbox_all",
+        singleClass : ".checkbox_single",
+        allClick : function($this){
+            var trgtObj = $this.closest("div");
+            if ($this.is(":checked"))
+            {
+                trgtObj.find(this.singleClass).prop("checked", true);
+            }
+            else
+            {
+                trgtObj.find(this.singleClass).prop("checked", false);
+            }
+        },
+        singleClick : function($this){
+            var trgtObj = $this.closest("div");
+            var allChkCnt = trgtObj.find(this.singleClass).length
+            var selChkCnt = trgtObj.find(this.singleClass + ":checked").length;
+            
+            if (allChkCnt == selChkCnt)
+            {
+                trgtObj.find(this.allClass).prop("checked", true);
+            }
+            else
+            {
+                trgtObj.find(this.allClass).prop("checked", false);
+            }
+        }
+    };
+    
+    //비동기 통신 로딩바
+    var startAjax = function()
+    {       
+        Feel.Validation.method.Indicator($('.layout-container'), $('#indi'));
+    }
+    
+    var stopAjax = function()
+    {
+        $('#indi').remove();
+    }
+    
+    /*Ajax*/
+    var fn_ajax = function(callbackAjax, url, dataType, loading, sync){
+        if (typeof dataType == "undefined")
+        {
+            dataType = "json";
+        }
+        
+        if (typeof sync == "undefined")
+        {
+            sync = true;
+        }
+        
+        $.ajax({
+            url : url,
+            type : "post", 
+            timeout : 30000,
+            dataType : dataType,
+            async : sync,
+            cache : false,
+            beforeSend : function(){
+                if (loading)
+                {
+                    $(".ajaxLoader").stop().fadeIn(200);
+                }
+                startAjax();
+            },
+            success : function(data, status, xhr) {
+                if (callbackAjax)
+                {
+                    callbackAjax(data);
+                }
+            },
+            error : function(data, stauts, xhr) {
+                fn_ajax_error(data, status, xhr);
+            },
+            complete : function() {
+                if (loading)
+                {
+                    $(".ajaxLoader").stop().fadeOut(200);
+                }
+                stopAjax();
+            }
+        })
+    }
+    
+    /*Form Ajax*/
+    var fn_ajax_data = function(callbackAjax, url, formObj, dataType, loading, sync){
+        if (typeof dataType == "undefined")
+        {
+            dataType = "json";
+        }
+        
+        if (typeof sync == "undefined")
+        {
+            sync = true;
+        }
+        
+        $.ajax({
+            url : url,
+            type : "post", 
+            timeout : 30000,
+            data : formObj.serializeArray(),
+            dataType : dataType,
+            async : sync,
+            cache : false,
+            beforeSend : function(){
+                if (loading)
+                {
+                    $(".ajaxLoader").stop().fadeIn(200);
+                }
+                startAjax();
+            },
+            success : function(data, status, xhr) {
+                if (callbackAjax)
+                {
+                    callbackAjax(data);
+                }
+            },
+            error : function(data, stauts, xhr) {
+                fn_ajax_error(data, status, xhr);
+            },
+            complete : function() {
+                if (loading)
+                {
+                    $(".ajaxLoader").stop().fadeOut(200);
+                }
+                stopAjax();
+            }
+        })
+    }
+    
+    /*Parameter Ajax*/
+    var fn_ajax_param_data = function(callbackAjax, url, data, dataType, loading, sync){
+        if (typeof dataType == "undefined")
+        {
+            dataType = "json";
+        }
+        
+        if (typeof sync == "undefined")
+        {
+            sync = true;
+        }
+        
+        $.ajax({
+            url : url,
+            type : "post", 
+            timeout : 300000,
+            data : data,
+            dataType : dataType,
+            async : sync,
+            cache : false,
+            beforeSend : function(){
+                if (loading)
+                {
+                    $(".ajaxLoader").stop().fadeIn(200);
+                }
+                startAjax();
+            },
+            success : function(data, status, xhr) {
+                if (callbackAjax)
+                {
+                    callbackAjax(data);
+                }
+            },
+            error : function(data, stauts, xhr) {
+                fn_ajax_error(data, status, xhr);
+            },
+            complete : function() {
+                if (loading)
+                {
+                    $(".ajaxLoader").stop().fadeOut(200);
+                }
+                stopAjax();
+            }
+        })
+    }
+    
+    var fn_ajax_error = function(data, status, xhr)
+    {
+        console.log(data.status);
+        if(data.status == 401 || data.status == 403)
+        {
+            alert("세션이 종료되었습니다. \n다시 로그인 해주세요.");
+        }
+        else if(data.status == 406)
+        {
+            alert("허용된 IP주소가 아닙니다. 운영자에게 문의해주세요.");
+        }
+        else if(data.status == 410)
+        {
+            alert("중복 로그인이 감지되어 로그인 페이지로 이동합니다.");
+        }
+        else
+        {
+            $(".ajaxLoader").stop().fadeOut(200);
+            alert("문제가 발생하였습니다. \n잠시 후 다시 시도해주세요.")
+        }
+    }
+    
+    var setViewPage = function(field, seq, url)
+    {
+        var formObj = $("#frm_search");
+        
+        formObj.find("input[name='" + field + "']").val(seq);
+        
+        location.href = url + "?" + formObj.strPam();
+    }
+    
+    var category = {
+        focusArray : new Array(),
+        getCategory : function(topNode, ctgryId, select, obj, write) 
+        {
+            focusCategory(ctgryId);
+            createCategory(topNode, obj, select, write);
+        }
+    };
+    
+    var focusCategory = function(ctgryId) 
+    {
+        if (ctgryId && !isNaN(ctgryId))
+        {
+            $.ajax({
+                type : "post",
+                url : "/mng/system/menu/abs/parnt-data.ajax",
+                dataType : "json",
+                async : false,
+                data : 
+                {
+                    "menuSeq" : ctgryId
+                },
+                success : function(r)
+                {
+                    if (r != null && r.length > 0) 
+                    {
+                        var startNum = 1;
+                        
+                        if (r[r.length -1].attr.dpth == 5)
+                        {
+                            startNum = 0;
+                        }
+                        
+                        for (var i = startNum; i < r.length; i++)
+                        {
+                            category.focusArray.push(r[i].attr.id);
+                        }                       
+                    }
+                }
+            });
+        }       
+    };
+    
+    var createCategory = function(topNode, obj, slt, write)
+    {
+        var curObj;
+        
+        if (obj == null)
+        {
+            $("#" + slt).children("select").remove()
+                             .end()
+                             .append("<select class='form-control categorySelect' title='카테고리'\"></select>");
+
+            curObj = $("#" + slt + " select:first");
+        } 
+        else 
+        {
+            $(obj).nextAll().remove();
+            
+            curObj = $(obj).clone(true);
+        }
+
+        $.ajax({
+            type : "post",
+            url : "/mng/system/menu/abs/child-data.ajax",
+            dataType : "json",
+            async : false,
+            data : 
+            {
+                "menuSeq" : topNode,
+            },
+            success : function(r) 
+            {
+                if (r != null && r.length > 0) 
+                {
+                    $(obj).addClass("mr-sm").parent().append(curObj);
+
+                    $(curObj).children().remove().end().append("<option value=''>" + (write ? "선택" : "전체") + "</option>");
+                    
+                    $.each(r, function(i, entry) 
+                    {
+                        $(curObj).append("<option value='" + entry["attr"].id + "' data-type='" + entry["attr"].type + "' data-dpth='" + entry["attr"].level + "'>" + entry["data"] + "</option>");
+                    }); 
+                    
+                    $(curObj).change(function(i){
+                        $(".categorySelect").removeAttr("name");
+
+                        var curIndex = $(curObj).parent().find(this).index();
+
+                        if (!$(this).val())
+                        {
+                            if (curIndex > 0)
+                            {
+                                $(curObj).prev().attr("name", slt);
+                            }
+                            
+                            $(curObj).parent().find("select:gt(" + curIndex + ")").remove();
+                        }
+                        else
+                        {                   
+                            $(this).attr("name", slt);
+                        }
+                    });
+                    
+                    var focusId = category.focusArray.shift();
+
+                    if (typeof focusId != "undefined")
+                    {
+                        $(curObj).children("option[value='" + focusId + "']").prop("selected", true).trigger("change");
+                    }
+                    else
+                    {
+                        $(curObj).children("option[value='']").prop("selected", true).trigger("change");
+                    }
+                }
+            }
+        });
+    };
+    
+    
+    var fn_search = function() {
+        $("#pageIndex").val("1");
+        if($("#q").val().length > 0 && $("#q").val().length < 2)
+        {
+            alert("검색어를 최소 2자 이상 입력해주세요.");
+        }
+        else
+        {
+            $("form[name='frm_search']").attr("action", "./list.do").submit();
+        }
+    }
+    
+    var fn_refresh = function() {
+        location.href = location.pathname;
+    }
+    
+    
+    $.fn.strPam = function(){
+        var formObj = this, tmpObj = { }, strPam = "";
+        
+        $.each(formObj.serializeArray(), function(){
+            var $type = formObj.find("[name='" + this.name + "']").prop("type");
+            
+            if (tmpObj[this.name])
+            {
+                tmpObj[this.name] = tmpObj[this.name] + "," + this.value;
+            }
+            else
+            {
+                tmpObj[this.name] = this.value;
+            }
+        });
+        
+        $.each(Object.keys(tmpObj), function(){
+            if (strPam)
+            {
+                strPam += "&";
+            }
+            
+            strPam += this + "=" + tmpObj[this];
+        });
+        
+        return strPam;
+    }
+    
+    var fn_list = function(){
+        if (confirm("목록으로 이동 시 입력한 값이 초기화 처리됩니다.\n이동하시겠습니까?"))
+        {
+            location.href = "./list.do?" + $("input[name='strPam']").val();
+        }
+    }
+    
+    var fn_delete = function(){
+        if ($("input:checkbox[name='detailsKey']:checked").length > 0)
+        {
+            var mainExpsYn = false;
+            
+            $("input:checkbox[name='detailsKey']:checked").each(function(){
+               if($(this).data("mainExpsYn") == "Y")
+               {
+                   mainExpsYn = true;
+               }
+            });
+            
+            if(mainExpsYn)
+            {
+                alert("메인에 노출중인 게시글은 삭제가 불가능합니다.")
+            }
+            else if (confirm("삭제하시겠습니까?\n삭제 후 데이터는 복구되지 않습니다.")) 
+            {
+                $("form[name='frm']").attr("action", "./delete.do").submit();
+            }
+        }
+        else if ($("input:checkbox[name='detailsKey']").length == 0 && $("#frm_search").length == 0)
+        {
+            if($("#mainExpsYn").val() == "Y")
+            {
+                alert("메인에 노출중인 게시글은 삭제가 불가능합니다.")
+            }
+            else if (confirm("삭제하시겠습니까?\n삭제 후 데이터는 복구되지 않습니다."))
+            {
+                $("form[name='frm']").attr("action", "./delete.do").submit();
+            }
+        }
+        else 
+        {
+            alert("삭제할 게시물을 선택하세요.");
+            return;
+        }
+    }
+    
+    var fn_not_use = function(){
+        if ($("input:checkbox[name='detailsKey']:checked").length > 0)
+        {
+            var mainExpsYn = false;
+            
+            $("input:checkbox[name='detailsKey']:checked").each(function(){
+               if($(this).data("mainExpsYn") == "Y")
+               {
+                   mainExpsYn = true;
+               }
+            });
+            
+            if(mainExpsYn)
+            {
+                alert("메인에 노출중인 게시글은 미노출 처리가 불가능합니다.")
+            }
+            else if (confirm("선택된 게시글을 미노출 처리하시겠습니까?\n데이터는 노출되지 않습니다.")) 
+            {
+                $("form[name='frm']").find("input[name='useYn']").val("N");
+                $("form[name='frm']").attr("action", "./updateUse.do").submit();
+            }
+        } 
+        else 
+        {
+            alert("미노출할 게시물을 선택하세요.");
+            return;
+        }
+    }
+    
+    var fn_use = function(){
+        if ($("input:checkbox[name='detailsKey']:checked").length > 0)
+        {                           
+            if (confirm("선택된 게시글을 노출 처리하시겠습니까??")) 
+            {
+                $("form[name='frm']").find("input[name='useYn']").val("Y");
+                $("form[name='frm']").attr("action", "./updateUse.do").submit();
+            }
+        } 
+        else 
+        {
+            alert("노출할 게시물을 선택하세요.");
+            return;
+        }
+    }
+    
+    var fn_fileupload = {
+                
+        exec : function(){
+            setTimeout(function(){
+                $.each($('.fileList'), function(){
+                    $(this).find('.fileview').css('width', $(this).find('.fileview .fileImg img').width() + 'px');
+                });
+            }, 100)
+            
+            $('input.files:file').each(function(){
+                var $this = $(this);
+                var dropzone = $this.parents('.dropzone');
+                var fileList = $this.parents('.filezone').find('.fileList');
+                
+                $(this).fileupload({
+                    url : "/cmm/fms/getUpdoadFileInf.ajax",
+                    dataType: 'json',
+                    autoUpload: true,
+                    dropZone : dropzone,
+                    done: function (e, data) {
+                        var fileBtnGroup
+                          , fileBtn
+                          , fileRealNm
+                          , fileDesc
+                          , fileDescVal = ""
+                          , fileImg
+                          , filePath
+                          , arrVideoExt = "mp4"
+                          , arrImgExt = "jpg,jpeg,gif,png,bmp,scr"
+                          , arrDocExt = "pdf,ppt,pptx,xls,xlsx,doc,docx,hwp,txt,zip,mp3,wav"
+                          , arrPdfExt = "pdf"
+                          , arrZipExt = "zip"
+                          , isOk = true;
+                        
+                        var max_file = $this.data().fileMax;
+                        var chk_file = $this.data().fileChk;
+                        
+                        var fileCnt = fileList.find('.btn-group').size();
+                        
+                        if (parseInt(max_file) < parseInt(fileCnt) + 1)
+                        {
+                            alert("최대 " + max_file + "개 까지 파일을 등록하실 수 있습니다.");
+                                
+                        }else{
+    
+                            $.each(data.result.tempFileMap, function (index, r) {
+                                if(r.state){
+                                    
+                                    fileBtnGroup = $('<div class="fileview btn-group ripple" style="vertical-align: initial;" />');
+                                    filePath = '<input type="hidden" name="' + fileList.data().addName  + '" value="' + r.webPath + '" />';
+                                    
+                                    fileBtnGroup.append(filePath);
+                                    
+                                    fileBtn = $('<button type="button" class="btn btn-default btn-xs fileDel" title="삭제" onclick="commonCtrl.file_del(this)" >Remove file</button>');
+                                    
+                                    if(chk_file == "img" && arrImgExt.indexOf(r.fileExtn) == -1){                                       
+                                        isOk = false;
+                                    }else if(chk_file == "doc" && arrDocExt.indexOf(r.fileExtn) == -1){                                     
+                                        isOk = false;
+                                    }else if(chk_file == "video" && arrVideoExt.indexOf(r.fileExtn) == -1){
+                                        isOk = false;
+                                    }else if(chk_file == "zip" && arrZipExt.indexOf(r.fileExtn) == -1){
+                                        isOk = false;
+                                    }else if(chk_file == "pdf" && arrPdfExt.indexOf(r.fileExtn) == -1){
+                                        isOk = false;
+                                    }
+                                    
+                                    if(isOk){
+	 alert("1");
+                                        if(arrImgExt.indexOf(r.fileExtn) > -1 && r.fileExtn != 'scr'){
+	 alert("2");  
+                                            
+                                            fileImg = $('<div class="fileImg">');
+                                            fileImg.append('<img src="' + r.webPath + '" class="fileDown" />');
+                                            
+                                            fileBtnGroup.append(fileImg);
+                                            
+                                            fileImg.find('img').load(function(){
+                                                fileBtnGroup.css('width', $(this).width() + 'px');
+                                            })
+                                            
+                                            fileRealNm = $('<input type="text" name="realFileNm" class="notRequired" title="파일명" style="width:100%;" maxlength="20" value=" '+ r.realFileNm +' " disabled/>');
+                                            fileDesc = $('<input type="text" name="fileDscVal" class="fileDscVal notRequired" title="파일 설명" data-real-file-nm="' + r.realFileNm + '" style="width:100%;" maxlength="50" />');
+                                            
+                                            fileBtnGroup.append(fileRealNm).append(fileDesc).append(fileBtn);
+                                            
+                                            fileBtnGroup.data('state', r.state).data('message', r.message);
+
+                                            fileList.append(fileBtnGroup);
+
+                                            dropzone.find('.dz-default').hide();
+                                            
+                                        }else if(arrDocExt.indexOf(r.fileExtn) > -1 || r.fileExtn == 'scr' ){
+	 alert("3");
+                                            fileDesc = $('<input type="text" name="fileDscVal" class="fileDscVal notRequired" title="파일 설명" data-real-file-nm="' + r.realFileNm + '" style="width:100%;" maxlength="50" />');
+                                            
+                                            fileBtnGroup.css('width', '200px')
+                                                        .append('<p class="fileDown" style="margin-bottom: 0; border: 1px solid #ccc; border-bottom: 0; padding: 5px; font-weight: bold; cursor:pointer;">' + r.realFileNm + '</p>')
+                                                        .append(fileDesc)
+                                                        .append(fileBtn);
+                                            fileBtnGroup.data('state', r.state).data('message', r.message);
+                                            fileList.append(fileBtnGroup);
+                                            dropzone.find('.dz-default').hide();
+                                        }else if(arrVideoExt.indexOf(r.fileExtn) > -1){
+	 alert("4");
+                                            fileBtnGroup.css('width', '200px').append('<p class="fileDown" style="margin-bottom: 0; border: 1px solid #ccc; border-bottom: 0; padding: 5px; font-weight: bold; cursor:pointer;">' + r.realFileNm + '</p>').append(fileBtn);
+                                            fileBtnGroup.data('state', r.state).data('message', r.message);
+                                            fileList.append(fileBtnGroup);
+                                            dropzone.find('.dz-default').hide();
+                                        }
+                                    }else{
+                                        alert("해당 파일 확장명은 등록하실 수 없습니다.");
+                                    }
+                                }else{
+                                    alert("업로드 실패 파일(파일명 : " + r.realFileNm + ", 사유 : " + r.message + ")");
+                                }
+                            });
+                        }
+                    }
+                }).bind('fileuploadfail', function (e, data) {
+                    console.log(e);
+                }).bind('fileuploadprogress', function (e, data) {
+                    var progressObj = $(this).parents('.filezone').parent().find('.progress')
+                      , progressBarObj = $(this).parents('.filezone').parent().find('.progress-bar')
+                      , progress = 0;
+                  alert("5");   
+                    progress = parseInt(data.loaded / data.total * 100, 10);
+                    progress = progress + '%';
+                    
+                    progressObj.show();
+                    progressBarObj.css('width', progress);
+                    
+                    if(progress == "100%"){
+	 alert("6");
+                        setTimeout(function(){
+                            progressObj.hide();
+                            progressBarObj.css('width', 0);
+                        },1000);
+                    }
+                });
+            });
+        },
+        requireChk : function($obj, msg, focusMethod){          
+            if($obj.parents('.filezone').find('.fileList .fileview').length < 1){
+                alert(msg);
+                focusMethod();
+                return false;
+            }
+        }
+    }
+    
+    var fn_file_del = function(obj){
+
+        var sn = $(obj).data().fileSn
+        , delSn = ""                        
+        , arrDelSn = new Array()
+        , fileList = $(obj).parents('.fileList')
+        , delTagName = fileList.data().delName 
+        , delTag = $('input[name='+delTagName+']');
+            
+        if( ( sn != "" && typeof sn !== 'undefined' ) || sn == 0){
+            delSn = delTag.val();
+          
+            if(delSn != ""){
+                delSn = delSn + "," + sn;
+            }else{
+                delSn = sn;
+            }
+          
+            delTag.val(delSn);                          
+        }
+      
+        $(obj).parent().hide(500, function(){
+            $(this).remove();
+          
+            if(fileList.find('.fileview').length == 0){
+                fileList.siblings('.dz-default').show();
+            }
+        })
+    }
+    
+    var fn_file_down = function(){
+        
+        $("body").on('click', '.fileDown', function(e){            
+            var obj = $(e.target);
+            var fileId = $(obj).data().fileId
+            , fileSn = $(obj).data().fileSn
+            , saveFileName = $(obj).data().fileSaveNm;
+          
+            if(typeof fileId == "undefined" || typeof fileSn == "undefined"){
+                alert("업로드 후 다운로드 가능합니다.");
+            }else{
+                if(typeof saveFileName == "undefined"){
+                    alert("필요한 조건을 만족하지 못해 다운로드를 중지합니다.");
+                }else{
+                    location.href = "/cmm/fms/FileDown.do?fileId=" + fileId + "&fileSn=" + fileSn + "&saveFileNm=" + encodeURI(saveFileName);
+                }
+            }    
+        });
+         
+    };
+    
+    var fn_file_dsc = function(){
+        $("body").on('keyup', '.fileDscVal', function(){
+            var fileDscList = $.map($('.fileDscVal'), function(obj){
+                return $(obj).data().realFileNm + '&&' + $(obj).val();
+            })            
+            $('input[name=fileDsc]').val(fileDscList.join('::'));
+        })
+    };
+   
+    
+    $(document).ready(function(){
+         $("input[name='q']").on("keydown", function(e){
+            if(e.keyCode == 13)
+            {
+                commonCtrl.search();
+                event.preventDefault();
+            }
+        });
+         
+         $(".checkbox_all").on("click", function(){
+             commonCtrl.checkbox.allClick($(this));
+         });
+         
+         $(".checkbox_single").on("click", function(){
+             commonCtrl.checkbox.singleClick($(this));
+         });
+         
+         $(".srchDtGb").on("click", function(){
+             var value = $(this).val()
+                 , settingDate = new Date()
+                 , trgtStrtDt = $(this).closest("div").find(".datepicker_strtDt")
+                 , trgtEndDt = $(this).closest("div").find(".datepicker_endDt")
+                 , strtDatepickerFormat = ""
+                 , endDatepickerFormat = "";
+             
+           
+               if(trgtStrtDt.hasClass('dp_srch_strt') && trgtEndDt.hasClass('dp_srch_end') ){
+                   strtDatepickerFormat = "yy-mm-dd";
+                   endDatepickerFormat = "yy-mm-dd";
+               }else{
+                   strtDatepickerFormat = "yy-mm-dd 00:00";
+                   endDatepickerFormat = "yy-mm-dd 23:59";
+               }
+               
+               if(value == "w"){
+                   trgtStrtDt.val("");
+                   trgtEndDt.val("");
+               }else if(value == "1w" ){   
+                   settingDate.setDate(settingDate.getDate()-7);
+                   trgtStrtDt.val($.datepicker.formatDate(strtDatepickerFormat, settingDate ));
+                   trgtEndDt.val($.datepicker.formatDate(endDatepickerFormat,new Date() ));
+               }else if(value == "1m" ){   
+                   settingDate.setMonth(settingDate.getMonth()-1);
+                   trgtStrtDt.val($.datepicker.formatDate(strtDatepickerFormat, settingDate ));
+                   trgtEndDt.val($.datepicker.formatDate(endDatepickerFormat,new Date() ));
+               }else if(value == "3m" ){                           
+                   settingDate.setMonth(settingDate.getMonth()-3);
+                   trgtStrtDt.val($.datepicker.formatDate(strtDatepickerFormat, settingDate ));
+                   trgtEndDt.val($.datepicker.formatDate(endDatepickerFormat,new Date() ));
+               }else if(value == "6m" ){       
+                   settingDate.setMonth(settingDate.getMonth()-6);
+                   trgtStrtDt.val($.datepicker.formatDate(strtDatepickerFormat, settingDate ));
+                   trgtEndDt.val($.datepicker.formatDate(endDatepickerFormat,new Date() ));
+                   
+               }else if(value == "1y" ){                           
+                   settingDate.setYear(settingDate.getFullYear() -1);
+                   trgtStrtDt.val($.datepicker.formatDate(strtDatepickerFormat, settingDate ));
+                   trgtEndDt.val($.datepicker.formatDate(endDatepickerFormat,new Date() ));
+               }
+         });
+         
+         $("#listCnt").on("change", function(){
+            var prevIndex = parseInt($("#pageIndex").val(), 10);
+            var slctIndex = Math.ceil(parseInt($(this).data("totCnt"), 10) / parseInt($(this).val(), 10));
+
+            if (prevIndex > slctIndex)
+            {
+                $("#pageIndex").val(slctIndex)
+            }
+            pagination(1);
+            
+//            $(this).closest("form").submit();
+         })
+                  
+         fn_file_dsc();
+         fn_file_down();
+                  
+    });
+    
+    var pagination = function(pageIndex) 
+    {
+        $("#pageIndex").val(pageIndex);
+        $("#frm_search").attr("action", location.pathname).submit();
+    };
+    
+    return {
+        setViewPage : setViewPage,
+        checkbox : checkbox,
+        startAjax : startAjax,
+        stopAjax : stopAjax,
+        bscAjax : fn_ajax,
+        frmAjax : fn_ajax_data,
+        paramAjax : fn_ajax_param_data,
+        search : fn_search,
+        refresh : fn_refresh,
+        list : fn_list,
+        del : fn_delete,
+        useN : fn_not_use,
+        useY : fn_use,
+        pagination : pagination,
+        fileupload : fn_fileupload,
+        file_del : fn_file_del
+    }
+}();
